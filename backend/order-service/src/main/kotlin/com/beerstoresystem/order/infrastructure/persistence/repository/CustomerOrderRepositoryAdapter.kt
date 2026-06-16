@@ -21,7 +21,6 @@ class CustomerOrderRepositoryAdapter(
         jpa.findAllByCustomerId(customerId).map { it.toDomain() }
 
     override fun save(order: CustomerOrder): CustomerOrder {
-        // For existing orders (update path), load the managed entity and update its fields
         if (order.id != 0L) {
             val managed = jpa.findById(order.id).orElseThrow {
                 NoSuchElementException("Order not found: ${order.id}")
@@ -37,7 +36,6 @@ class CustomerOrderRepositoryAdapter(
             managed.readyForPickupAt = order.readyForPickupAt
             managed.pickupExpiresAt = order.pickupExpiresAt
             managed.pickedUpAt = order.pickedUpAt
-            // Sync items if provided (new inserts only; existing items are already tracked)
             if (order.items.isNotEmpty() && managed.items.isEmpty()) {
                 order.items.forEach { item ->
                     managed.items.add(item.toEntity(managed))
@@ -45,7 +43,6 @@ class CustomerOrderRepositoryAdapter(
             }
             return jpa.save(managed).toDomain()
         }
-        // New order path
         val entity = order.toEntity()
         val savedEntity = jpa.save(entity)
         if (order.items.isNotEmpty()) {

@@ -66,7 +66,6 @@ class OrderApplicationService(
             throw EmptyCartException("Cart is empty for customer: ${command.customerId}")
         }
 
-        // 1) Get variant info from catalog port
         val variantIds = cart.items.map { it.variantId }
         val variants = runCatching {
             catalogPort.getVariants(variantIds)
@@ -81,7 +80,6 @@ class OrderApplicationService(
             }
         }
 
-        // 2) Check stock availability
         val stockItems = cart.items.map { item ->
             StockCheckRequest(variantId = item.variantId, quantity = item.quantity)
         }
@@ -99,7 +97,6 @@ class OrderApplicationService(
             throw OutOfStockException("Insufficient stock: $unavailable")
         }
 
-        // 3) Calculate totals
         var subtotal = BigDecimal.ZERO
         for (item in cart.items) {
             val variant = variantMap[item.variantId]!!
@@ -110,7 +107,6 @@ class OrderApplicationService(
         val discountAmount = BigDecimal.ZERO
         val totalAmount = subtotal.subtract(discountAmount)
 
-        // 4) Create order (save first to get the ID for stock reservation)
         val pickupCode = generatePickupCode()
         val now = OffsetDateTime.now()
         val newOrder = CustomerOrder(
@@ -130,7 +126,6 @@ class OrderApplicationService(
         )
         val savedOrder = customerOrderRepository.save(newOrder)
 
-        // 5) Reserve stock
         val reserveResult = runCatching {
             warehousePort.reserveStock(savedOrder.id, stockItems)
         }.getOrElse { e ->
@@ -143,7 +138,6 @@ class OrderApplicationService(
 
         val batchMap = reserveResult.reserved.associateBy { it.variantId }
 
-        // 6) Create order items
         val orderItems = cart.items.map { cartItem ->
             val variant = variantMap[cartItem.variantId]!!
             val reservedBatch = batchMap[cartItem.variantId]
@@ -161,7 +155,6 @@ class OrderApplicationService(
         val orderWithItems = savedOrder.copy(items = orderItems)
         customerOrderRepository.save(orderWithItems)
 
-        // Record initial status history
         orderStatusHistoryRepository.save(
             OrderStatusHistory(
                 id = 0L,
@@ -173,7 +166,6 @@ class OrderApplicationService(
             )
         )
 
-        // 7) Write outbox event for orders.placed
         val itemsPayload = orderItems.map { item ->
             mapOf(
                 "variantId" to item.variantId,
@@ -196,7 +188,6 @@ class OrderApplicationService(
             )
         )
 
-        // 8) Clear cart
         cartRepository.save(cart.copy(items = emptyList(), updatedAt = OffsetDateTime.now()))
 
         log.info("Order {} placed for customer {}", savedOrder.id, command.customerId)
