@@ -39,7 +39,7 @@ class CartApplicationServiceTest {
     fun `getCart throws when customer not found`() {
         every { customerRepository.findById(99L) } returns null
 
-        assertThrows<NoSuchElementException> { service.getCart(99L) }
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> { service.getCart(99L) }
     }
 
     @Test
@@ -78,7 +78,7 @@ class CartApplicationServiceTest {
     fun `addItem throws when customer not found`() {
         every { customerRepository.findById(99L) } returns null
 
-        assertThrows<NoSuchElementException> {
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> {
             service.addItem(99L, AddCartItemCommand(variantId = 5L, quantity = 1))
         }
     }
@@ -128,7 +128,7 @@ class CartApplicationServiceTest {
     fun `updateItem throws when cart not found`() {
         every { cartRepository.findByCustomerIdWithItems(1L) } returns null
 
-        assertThrows<NoSuchElementException> { service.updateItem(1L, 5L, 3) }
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> { service.updateItem(1L, 5L, 3) }
     }
 
     @Test
@@ -136,7 +136,7 @@ class CartApplicationServiceTest {
         val cart = makeCart(items = listOf(makeCartItem(variantId = 99L)))
         every { cartRepository.findByCustomerIdWithItems(1L) } returns cart
 
-        assertThrows<NoSuchElementException> { service.updateItem(1L, 5L, 3) }
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> { service.updateItem(1L, 5L, 3) }
     }
 
     @Test
@@ -156,7 +156,7 @@ class CartApplicationServiceTest {
     fun `removeItem throws when cart not found`() {
         every { cartRepository.findByCustomerIdWithItems(1L) } returns null
 
-        assertThrows<NoSuchElementException> { service.removeItem(1L, 5L) }
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> { service.removeItem(1L, 5L) }
     }
 
     @Test
@@ -175,7 +175,7 @@ class CartApplicationServiceTest {
     fun `clearCart throws when cart not found`() {
         every { cartRepository.findByCustomerIdWithItems(1L) } returns null
 
-        assertThrows<NoSuchElementException> { service.clearCart(1L) }
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> { service.clearCart(1L) }
     }
 
     @Test

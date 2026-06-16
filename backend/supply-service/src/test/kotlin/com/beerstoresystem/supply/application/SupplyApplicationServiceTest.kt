@@ -10,6 +10,8 @@ import com.beerstoresystem.supply.domain.repository.OutboxEventRepository
 import com.beerstoresystem.supply.domain.repository.PurchaseOrderItemRepository
 import com.beerstoresystem.supply.domain.repository.PurchaseOrderRepository
 import com.beerstoresystem.supply.domain.repository.SupplierRepository
+import com.beerstoresystem.supply.domain.exception.BusinessRuleException
+import com.beerstoresystem.supply.domain.exception.NotFoundException
 import com.beerstoresystem.supply.integration.rest.dto.AddItemRequest
 import com.beerstoresystem.supply.integration.rest.dto.CreatePurchaseOrderRequest
 import com.beerstoresystem.supply.integration.rest.dto.CreateSupplierRequest
@@ -81,7 +83,7 @@ class SupplyApplicationServiceTest {
     fun `createPurchaseOrder throws when supplier not found`() {
         every { supplierRepository.findById(99L) } returns null
 
-        assertThrows<NoSuchElementException> {
+        assertThrows<NotFoundException> {
             service.createPurchaseOrder(CreatePurchaseOrderRequest(supplierId = 99L, warehouseId = 1L))
         }
     }
@@ -103,7 +105,7 @@ class SupplyApplicationServiceTest {
     fun `addItem throws when order not found`() {
         every { purchaseOrderRepository.findById(99L) } returns null
 
-        assertThrows<NoSuchElementException> {
+        assertThrows<NotFoundException> {
             service.addItem(99L, AddItemRequest(variantId = 1L, quantity = 5, unitCost = BigDecimal("10.00")))
         }
     }
@@ -126,7 +128,7 @@ class SupplyApplicationServiceTest {
         val order = makeOrder()
         every { purchaseOrderRepository.findById(1L) } returns order
 
-        assertThrows<IllegalArgumentException> {
+        assertThrows<BusinessRuleException> {
             service.updateStatus(1L, UpdateStatusRequest("INVALID"))
         }
     }

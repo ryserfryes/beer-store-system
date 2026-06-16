@@ -92,12 +92,12 @@ class CatalogServiceIntegrationTest {
 
     @Test
     fun `getBeerDetail throws when beer not found`() {
-        assertThrows<NoSuchElementException> { catalogUseCase.getBeerDetail(999999L) }
+        assertThrows<com.beerstoresystem.catalog.domain.exception.NotFoundException> { catalogUseCase.getBeerDetail(999999L) }
     }
 
     @Test
     fun `getVariantById throws when variant not found`() {
-        assertThrows<NoSuchElementException> { catalogUseCase.getVariantById(999999L) }
+        assertThrows<com.beerstoresystem.catalog.domain.exception.NotFoundException> { catalogUseCase.getVariantById(999999L) }
     }
 
     @Test

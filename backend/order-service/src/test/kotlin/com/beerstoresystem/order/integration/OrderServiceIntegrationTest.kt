@@ -66,12 +66,12 @@ class OrderServiceIntegrationTest {
 
     @Test
     fun `getOrder throws when not found`() {
-        assertThrows<NoSuchElementException> { orderService.getOrder(999999L) }
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> { orderService.getOrder(999999L) }
     }
 
     @Test
     fun `getCustomerOrders throws when customer not found`() {
-        assertThrows<NoSuchElementException> { orderService.getCustomerOrders(999999L) }
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> { orderService.getCustomerOrders(999999L) }
     }
 
     @Test
@@ -95,7 +95,7 @@ class OrderServiceIntegrationTest {
 
     @Test
     fun `getCart throws when customer not found`() {
-        assertThrows<NoSuchElementException> { cartService.getCart(999999L) }
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> { cartService.getCart(999999L) }
     }
 
     @Test
@@ -138,7 +138,7 @@ class OrderServiceIntegrationTest {
         val customer = saveCustomer("upd@example.com")
         cartService.addItem(customer.id, AddCartItemCommand(variantId = 1L, quantity = 1))
 
-        assertThrows<NoSuchElementException> {
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> {
             cartService.updateItem(customer.id, variantId = 99L, quantity = 5)
         }
     }

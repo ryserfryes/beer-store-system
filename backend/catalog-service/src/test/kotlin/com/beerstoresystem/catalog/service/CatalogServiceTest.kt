@@ -112,14 +112,14 @@ class CatalogServiceTest {
     fun `getBeerDetail throws when not found`() {
         every { beerRepository.findByIdWithDetails(99L) } returns null
 
-        assertThrows<NoSuchElementException> { service.getBeerDetail(99L) }
+        assertThrows<com.beerstoresystem.catalog.domain.exception.NotFoundException> { service.getBeerDetail(99L) }
     }
 
     @Test
     fun `getVariantById throws when not found`() {
         every { productVariantRepository.findByIdWithDetails(99L) } returns null
 
-        assertThrows<NoSuchElementException> { service.getVariantById(99L) }
+        assertThrows<com.beerstoresystem.catalog.domain.exception.NotFoundException> { service.getVariantById(99L) }
     }
 
     @Test
@@ -170,6 +170,6 @@ class CatalogServiceTest {
     fun `recordView throws when variant not found`() {
         every { productVariantRepository.findByIdOrNull(999L) } returns null
 
-        assertThrows<NoSuchElementException> { service.recordView(999L, null) }
+        assertThrows<com.beerstoresystem.catalog.domain.exception.NotFoundException> { service.recordView(999L, null) }
     }
 }

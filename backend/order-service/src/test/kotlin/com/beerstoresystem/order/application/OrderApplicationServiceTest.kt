@@ -82,7 +82,7 @@ class OrderApplicationServiceTest {
     fun `getOrder throws when not found`() {
         every { customerOrderRepository.findByIdWithItems(99L) } returns null
 
-        assertThrows<NoSuchElementException> { service.getOrder(99L) }
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> { service.getOrder(99L) }
     }
 
     @Test
@@ -100,7 +100,7 @@ class OrderApplicationServiceTest {
     fun `getCustomerOrders throws when customer not found`() {
         every { customerRepository.findById(99L) } returns null
 
-        assertThrows<NoSuchElementException> { service.getCustomerOrders(99L) }
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> { service.getCustomerOrders(99L) }
     }
 
     @Test
@@ -117,7 +117,7 @@ class OrderApplicationServiceTest {
     fun `placeOrder throws when customer not found`() {
         every { customerRepository.findById(99L) } returns null
 
-        assertThrows<NoSuchElementException> {
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> {
             service.placeOrder(PlaceOrderCommand(customerId = 99L, pickupPointId = 1L))
         }
     }
@@ -127,7 +127,7 @@ class OrderApplicationServiceTest {
         every { customerRepository.findById(1L) } returns makeCustomer()
         every { cartRepository.findByCustomerIdWithItems(1L) } returns null
 
-        assertThrows<IllegalStateException> {
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> {
             service.placeOrder(PlaceOrderCommand(customerId = 1L, pickupPointId = 1L))
         }
     }
@@ -137,7 +137,7 @@ class OrderApplicationServiceTest {
         every { customerRepository.findById(1L) } returns makeCustomer()
         every { cartRepository.findByCustomerIdWithItems(1L) } returns makeCart()
 
-        assertThrows<IllegalStateException> {
+        assertThrows<com.beerstoresystem.order.domain.exception.BusinessRuleException> {
             service.placeOrder(PlaceOrderCommand(customerId = 1L, pickupPointId = 1L))
         }
     }
@@ -150,7 +150,7 @@ class OrderApplicationServiceTest {
         every { cartRepository.findByCustomerIdWithItems(1L) } returns cart
         every { catalogPort.getVariants(listOf(5L)) } returns emptyList()
 
-        assertThrows<IllegalStateException> {
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> {
             service.placeOrder(PlaceOrderCommand(customerId = 1L, pickupPointId = 1L))
         }
     }
@@ -164,7 +164,7 @@ class OrderApplicationServiceTest {
         every { catalogPort.getVariants(listOf(5L)) } returns listOf(makeVariantInfo())
         every { warehousePort.checkStock(any()) } returns makeCheckStockResult(allAvailable = false)
 
-        assertThrows<IllegalStateException> {
+        assertThrows<com.beerstoresystem.order.domain.exception.BusinessRuleException> {
             service.placeOrder(PlaceOrderCommand(customerId = 1L, pickupPointId = 1L))
         }
     }
@@ -202,7 +202,7 @@ class OrderApplicationServiceTest {
     fun `advanceOrderStatus throws when order not found`() {
         every { customerOrderRepository.findByIdWithItems(99L) } returns null
 
-        assertThrows<NoSuchElementException> {
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> {
             service.advanceOrderStatus(99L, null)
         }
     }
@@ -212,7 +212,7 @@ class OrderApplicationServiceTest {
         val order = makeOrder().copy(status = OrderStatus.PICKED_UP)
         every { customerOrderRepository.findByIdWithItems(100L) } returns order
 
-        assertThrows<IllegalStateException> {
+        assertThrows<com.beerstoresystem.order.domain.exception.BusinessRuleException> {
             service.advanceOrderStatus(100L, null)
         }
     }
@@ -252,7 +252,7 @@ class OrderApplicationServiceTest {
     fun `cancelOrder throws when order not found`() {
         every { customerOrderRepository.findByIdWithItems(99L) } returns null
 
-        assertThrows<NoSuchElementException> {
+        assertThrows<com.beerstoresystem.order.domain.exception.NotFoundException> {
             service.cancelOrder(99L, null)
         }
     }
@@ -262,7 +262,7 @@ class OrderApplicationServiceTest {
         val order = makeOrder().copy(status = OrderStatus.CANCELED)
         every { customerOrderRepository.findByIdWithItems(100L) } returns order
 
-        assertThrows<IllegalStateException> {
+        assertThrows<com.beerstoresystem.order.domain.exception.BusinessRuleException> {
             service.cancelOrder(100L, null)
         }
     }
