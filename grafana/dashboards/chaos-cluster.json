@@ -1,0 +1,507 @@
+{
+  "title": "Chaos Engineering — Cluster Health",
+  "uid": "chaos-cluster",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-30m", "to": "now" },
+  "tags": ["chaos", "patroni", "etcd", "haproxy"],
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Patroni — Node Roles",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Primary Node",
+      "description": "Which Patroni node is currently primary (master=1)",
+      "gridPos": { "x": 0, "y": 1, "w": 8, "h": 4 },
+      "datasource": { "uid": "prometheus", "type": "prometheus" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "2": { "text": "PRIMARY", "color": "green", "index": 0 },
+                "1": { "text": "replica", "color": "blue", "index": 1 },
+                "0": { "text": "NODE DOWN", "color": "red", "index": 2 }
+              }
+            }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "up{job=\"patroni\"} * on(instance) group_right(name, scope) (last_over_time(patroni_primary[10m]) + 1)",
+          "legendFormat": "{{name}}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Patroni Scrape Up",
+      "description": "up{job='patroni'} — 1 = Prometheus reaches Patroni endpoint",
+      "gridPos": { "x": 8, "y": 1, "w": 8, "h": 4 },
+      "datasource": { "uid": "prometheus", "type": "prometheus" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "UP", "color": "green", "index": 0 } } },
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red", "index": 1 } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "up{job=\"patroni\"}",
+          "legendFormat": "{{instance}}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "PostgreSQL Running",
+      "description": "patroni_postgres_running per node",
+      "gridPos": { "x": 16, "y": 1, "w": 8, "h": 4 },
+      "datasource": { "uid": "prometheus", "type": "prometheus" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "2": { "text": "UP", "color": "green", "index": 0 },
+                "1": { "text": "PG STOPPED", "color": "orange", "index": 1 },
+                "0": { "text": "NODE DOWN", "color": "red", "index": 2 }
+              }
+            }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "up{job=\"patroni\"} * on(instance) group_right(name, scope) (last_over_time(patroni_postgres_running[10m]) + 1)",
+          "legendFormat": "{{name}}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Patroni Role Over Time (primary=1, replica=0)",
+      "description": "Tracks role switches — spike to 1 = became primary",
+      "gridPos": { "x": 0, "y": 5, "w": 24, "h": 6 },
+      "datasource": { "uid": "prometheus", "type": "prometheus" },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "patroni_primary",
+          "legendFormat": "primary — {{name}}"
+        },
+        {
+          "expr": "patroni_replica",
+          "legendFormat": "replica — {{name}}"
+        },
+        {
+          "expr": "patroni_standby_leader",
+          "legendFormat": "standby_leader — {{name}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "row",
+      "title": "DCS (etcd) Health",
+      "gridPos": { "x": 0, "y": 11, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "etcd — Has Leader",
+      "description": "etcd_server_has_leader per node; 0 = no leader = DCS down",
+      "gridPos": { "x": 0, "y": 12, "w": 8, "h": 4 },
+      "datasource": { "uid": "prometheus", "type": "prometheus" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "HAS LEADER", "color": "green", "index": 0 } } },
+            { "type": "value", "options": { "0": { "text": "NO LEADER", "color": "red", "index": 1 } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "etcd_server_has_leader",
+          "legendFormat": "{{instance}}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "etcd — Is Leader",
+      "description": "Which etcd node is currently leader",
+      "gridPos": { "x": 8, "y": 12, "w": 8, "h": 4 },
+      "datasource": { "uid": "prometheus", "type": "prometheus" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "1": { "text": "LEADER", "color": "green", "index": 0 } } },
+            { "type": "value", "options": { "0": { "text": "follower", "color": "blue", "index": 1 } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "etcd_server_is_leader",
+          "legendFormat": "{{instance}}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Patroni DCS Last Seen (seconds ago)",
+      "description": "time() - patroni_dcs_last_seen; large value = Patroni lost contact with etcd",
+      "gridPos": { "x": 16, "y": 12, "w": 8, "h": 4 },
+      "datasource": { "uid": "prometheus", "type": "prometheus" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "red", "value": 30 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "time() - patroni_dcs_last_seen",
+          "legendFormat": "{{name}}",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "etcd Has Leader Over Time",
+      "description": "Drop to 0 = etcd lost quorum (Scenario 2 injection point)",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 6 },
+      "datasource": { "uid": "prometheus", "type": "prometheus" },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 20 },
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "etcd_server_has_leader",
+          "legendFormat": "{{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "etcd Failed Proposals (rate)",
+      "description": "Spikes indicate DCS write failures during chaos",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 6 },
+      "datasource": { "uid": "prometheus", "type": "prometheus" },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "rate(etcd_server_proposals_failed_total[1m])",
+          "legendFormat": "failed — {{instance}}"
+        },
+        {
+          "expr": "rate(etcd_server_proposals_committed_total[1m])",
+          "legendFormat": "committed — {{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "row",
+      "title": "Replication",
+      "gridPos": { "x": 0, "y": 22, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Replication Lag (WAL bytes behind primary)",
+      "description": "xlog_location - xlog_replayed_location; gap grows if replica falls behind",
+      "gridPos": { "x": 0, "y": 23, "w": 12, "h": 6 },
+      "datasource": { "uid": "prometheus", "type": "prometheus" },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1048576 },
+              { "color": "red", "value": 10485760 }
+            ]
+          },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "max(patroni_xlog_location) - patroni_xlog_replayed_location",
+          "legendFormat": "lag — {{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "WAL Position per Node",
+      "description": "Primary WAL location vs replica received/replayed",
+      "gridPos": { "x": 12, "y": 23, "w": 12, "h": 6 },
+      "datasource": { "uid": "prometheus", "type": "prometheus" },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "lineWidth": 2, "fillOpacity": 5 },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "patroni_xlog_location",
+          "legendFormat": "master xlog — {{instance}}"
+        },
+        {
+          "expr": "patroni_xlog_received_location",
+          "legendFormat": "received — {{instance}}"
+        },
+        {
+          "expr": "patroni_xlog_replayed_location",
+          "legendFormat": "replayed — {{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "row",
+      "title": "PostgreSQL Availability",
+      "gridPos": { "x": 0, "y": 29, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Active Connections",
+      "description": "Drops to 0 during failover window",
+      "gridPos": { "x": 0, "y": 30, "w": 12, "h": 6 },
+      "datasource": { "uid": "prometheus", "type": "prometheus" },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "pg_stat_activity_count{state=\"active\"}",
+          "legendFormat": "active conns — {{datname}}"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "TPS (transactions per second)",
+      "description": "Drops during failover; recovery after = system restored",
+      "gridPos": { "x": 12, "y": 30, "w": 12, "h": 6 },
+      "datasource": { "uid": "prometheus", "type": "prometheus" },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "rate(pg_stat_database_xact_commit{datname!~\"template.*|postgres\"}[1m]) + rate(pg_stat_database_xact_rollback{datname!~\"template.*|postgres\"}[1m])",
+          "legendFormat": "tps — {{datname}}"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "pg_up — PostgreSQL Reachable",
+      "description": "1 = postgres-exporter can reach DB; 0 = DB unreachable (key failover indicator)",
+      "gridPos": { "x": 0, "y": 36, "w": 24, "h": 5 },
+      "datasource": { "uid": "prometheus", "type": "prometheus" },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 30 },
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "pg_up",
+          "legendFormat": "pg_up — {{instance}}"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+  "plugin.name": "pgoutput",
+  "database.hostname": "haproxy",
+  "database.port": "5000",
+  "database.user": "debezium_user",
+  "database.password": "debezium_password",
+  "database.dbname": "craft_beer_store",
+  "topic.prefix": "cdc",
+  "table.include.list": "public.customer_orders,public.order_items,public.beers,public.product_variants",
+  "slot.name": "debezium_slot",
+  "publication.name": "debezium_pub",
+  "snapshot.mode": "initial",
+  "decimal.handling.mode": "string",
+  "time.precision.mode": "adaptive",
+  "tombstones.on.delete": "false",
+  "heartbeat.interval.ms": "10000",
+  "topic.creation.default.replication.factor": "1",
+  "topic.creation.default.partitions": "1"
+}

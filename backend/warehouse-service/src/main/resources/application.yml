@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: warehouse-service
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5000}/${POSTGRES_DB:craft_beer_store}?stringtype=unspecified
+    username: ${POSTGRES_USER:craft_beer_user}
+    password: ${POSTGRES_PASSWORD:craft_beer_password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+  liquibase:
+    enabled: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: warehouse-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+server:
+  port: ${SERVER_PORT:8082}
+
+grpc:
+  server:
+    port: ${GRPC_PORT:9095}

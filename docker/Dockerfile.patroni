@@ -1,0 +1,9 @@
+FROM postgres:16-bookworm
+RUN apt-get update \
+    && apt-get install -y python3 python3-pip curl \
+    && pip3 install patroni[etcd3] psycopg2-binary --break-system-packages \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+USER postgres
+ENTRYPOINT ["patroni", "/etc/patroni.yml"]

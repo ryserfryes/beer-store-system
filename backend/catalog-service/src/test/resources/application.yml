@@ -1,0 +1,11 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+  liquibase:
+    enabled: false
+grpc:
+  server:
+    port: -1

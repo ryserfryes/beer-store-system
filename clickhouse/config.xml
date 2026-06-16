@@ -1,0 +1,8 @@
+<clickhouse>
+    <mark_cache_size>134217728</mark_cache_size>
+    <uncompressed_cache_size>67108864</uncompressed_cache_size>
+    <max_concurrent_queries>2</max_concurrent_queries>
+    <listen_host>::</listen_host>
+    <timezone>UTC</timezone>
+    <skip_check_for_incorrect_settings>0</skip_check_for_incorrect_settings>
+</clickhouse>

@@ -1,0 +1,23 @@
+FROM golang:1.24-alpine AS seqwall-builder
+RUN GOBIN=/usr/local/bin go install github.com/realkarych/seqwall@latest
+
+FROM liquibase/liquibase:4.29
+
+USER root
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash postgresql-client ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=seqwall-builder /usr/local/bin/seqwall /usr/local/bin/seqwall
+
+COPY migrations /migrations
+
+COPY scripts/entrypoint-migrator.sh /scripts/entrypoint-migrator.sh
+COPY scripts/migrate-up-one.sh /scripts/migrate-up-one.sh
+COPY scripts/migrate-down-one.sh /scripts/migrate-down-one.sh
+
+RUN sed -i 's/\r$//' /scripts/entrypoint-migrator.sh /scripts/migrate-up-one.sh /scripts/migrate-down-one.sh \
+ && chmod +x /scripts/entrypoint-migrator.sh /scripts/migrate-up-one.sh /scripts/migrate-down-one.sh
+
+ENTRYPOINT ["/bin/bash", "/scripts/entrypoint-migrator.sh"]

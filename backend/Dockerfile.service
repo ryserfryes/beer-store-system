@@ -1,0 +1,20 @@
+ARG SERVICE=catalog-service
+
+FROM gradle:9.4.1-jdk25 AS build
+ARG SERVICE
+WORKDIR /app
+COPY settings.gradle.kts build.gradle.kts ./
+COPY gradle/ gradle/
+COPY proto/ proto/
+COPY api-gateway/ api-gateway/
+COPY catalog-service/ catalog-service/
+COPY warehouse-service/ warehouse-service/
+COPY supply-service/ supply-service/
+COPY order-service/ order-service/
+COPY review-service/ review-service/
+RUN gradle :${SERVICE}:bootJar --no-daemon -x test
+
+FROM eclipse-temurin:25-jre-alpine
+ARG SERVICE
+COPY --from=build /app/${SERVICE}/build/libs/*.jar app.jar
+ENTRYPOINT ["java", "-jar", "app.jar"]

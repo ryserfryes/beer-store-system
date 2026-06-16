@@ -1,0 +1,27 @@
+syntax = "proto3";
+package catalog;
+option java_package = "com.beerstoresystem.proto.catalog";
+option java_multiple_files = true;
+
+service CatalogGrpcService {
+  rpc GetVariants (GetVariantsRequest) returns (GetVariantsResponse);
+}
+
+message GetVariantsRequest {
+  repeated int64 ids = 1;
+}
+
+message GetVariantsResponse {
+  repeated VariantProto variants = 1;
+}
+
+message VariantProto {
+  int64 id = 1;
+  string sku = 2;
+  string beer_name = 3;
+  string brewery_name = 4;
+  double unit_price = 5;
+  int32 volume_ml = 6;
+  bool is_active = 7;
+  int64 beer_id = 8;
+}

@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: order-service
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5000}/${POSTGRES_DB:craft_beer_store}?stringtype=unspecified
+    username: ${POSTGRES_USER:craft_beer_user}
+    password: ${POSTGRES_PASSWORD:craft_beer_password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+  liquibase:
+    enabled: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+
+server:
+  port: ${SERVER_PORT:8084}
+
+grpc:
+  server:
+    port: ${GRPC_PORT:9094}
+  client:
+    catalog-service:
+      address: static://${CATALOG_GRPC_HOST:localhost}:${CATALOG_GRPC_PORT:9091}
+      negotiation-type: plaintext
+    warehouse-service:
+      address: static://${WAREHOUSE_GRPC_HOST:localhost}:${WAREHOUSE_GRPC_PORT:9095}
+      negotiation-type: plaintext
+
+outbox:
+  scheduler:
+    fixedDelay: 5000

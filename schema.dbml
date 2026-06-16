@@ -1,0 +1,316 @@
+Project craft_beer_store {
+  database_type: 'PostgreSQL'
+}
+
+Enum order_status {
+  pending
+  paid
+  assembling
+  ready_for_pickup
+  picked_up
+  canceled
+  expired
+}
+
+Enum payment_status {
+  pending
+  succeeded
+  failed
+  refunded
+}
+
+Enum purchase_order_status {
+  draft
+  sent
+  partially_received
+  received
+  canceled
+}
+
+Enum employee_role {
+  manager
+  picker
+  accountant
+  support
+}
+
+Table countries {
+  id bigint [pk, increment]
+  iso_code char(2) [not null, unique]
+  name varchar(100) [not null, unique]
+}
+
+Table breweries {
+  id bigint [pk, increment]
+  country_id bigint [not null, ref: > countries.id]
+  name varchar(150) [not null]
+  website_url varchar(255)
+  founded_year int
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (country_id, name) [unique]
+  }
+}
+
+Table beer_styles {
+  id bigint [pk, increment]
+  name varchar(100) [not null, unique]
+  description text
+}
+
+Table beers {
+  id bigint [pk, increment]
+  brewery_id bigint [not null, ref: > breweries.id]
+  style_id bigint [not null, ref: > beer_styles.id]
+  name varchar(150) [not null]
+  description text
+  abv numeric(4,2) [not null]
+  is_active boolean [not null, default: true]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (brewery_id, name) [unique]
+  }
+}
+
+Table package_types {
+  id bigint [pk, increment]
+  code varchar(30) [not null, unique]
+  name varchar(100) [not null, unique]
+}
+
+Table product_variants {
+  id bigint [pk, increment]
+  beer_id bigint [not null, ref: > beers.id]
+  package_type_id bigint [not null, ref: > package_types.id]
+  sku varchar(64) [not null, unique]
+  volume_ml int [not null]
+  unit_price numeric(12,2) [not null]
+  is_active boolean [not null, default: true]
+  attributes jsonb [not null, default: `'{}'::jsonb`]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (beer_id, package_type_id, volume_ml) [unique]
+  }
+}
+
+Table suppliers {
+  id bigint [pk, increment]
+  country_id bigint [not null, ref: > countries.id]
+  name varchar(150) [not null, unique]
+  contact_email varchar(255)
+  contact_phone varchar(40)
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table warehouses {
+  id bigint [pk, increment]
+  country_id bigint [not null, ref: > countries.id]
+  name varchar(120) [not null, unique]
+  address_line varchar(255) [not null]
+  city varchar(120) [not null]
+  postal_code varchar(20)
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table pickup_points {
+  id bigint [pk, increment]
+  warehouse_id bigint [not null, ref: > warehouses.id]
+  name varchar(120) [not null]
+  city varchar(120) [not null]
+  address_line varchar(255) [not null]
+  postal_code varchar(20)
+  working_hours varchar(200)
+  is_active boolean [not null, default: true]
+
+  indexes {
+    (warehouse_id, name) [unique]
+  }
+}
+
+Table purchase_orders {
+  id bigint [pk, increment]
+  supplier_id bigint [not null, ref: > suppliers.id]
+  warehouse_id bigint [not null, ref: > warehouses.id]
+  status purchase_order_status [not null, default: 'draft']
+  ordered_at timestamptz [not null, default: `now()`]
+  expected_at timestamptz
+  received_at timestamptz
+}
+
+Table purchase_order_items {
+  id bigint [pk, increment]
+  purchase_order_id bigint [not null, ref: > purchase_orders.id]
+  variant_id bigint [not null, ref: > product_variants.id]
+  quantity int [not null]
+  unit_cost numeric(12,2) [not null]
+
+  indexes {
+    (purchase_order_id, variant_id) [unique]
+  }
+}
+
+Table inventory_batches {
+  id bigint [pk, increment]
+  variant_id bigint [not null, ref: > product_variants.id]
+  warehouse_id bigint [not null, ref: > warehouses.id]
+  purchase_order_item_id bigint [ref: > purchase_order_items.id]
+  lot_code varchar(60) [not null]
+  quantity_on_hand int [not null]
+  wholesale_cost numeric(12,2) [not null]
+  produced_on date
+  expires_on date
+  received_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (warehouse_id, variant_id, lot_code) [unique]
+  }
+}
+
+Table customers {
+  id bigint [pk, increment]
+  email varchar(255) [not null, unique]
+  phone varchar(40)
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  birth_date date
+  registered_at timestamptz [not null, default: `now()`]
+}
+
+Table carts {
+  id bigint [pk, increment]
+  customer_id bigint [not null, unique, ref: > customers.id]
+  updated_at timestamptz [not null, default: `now()`]
+}
+
+Table cart_items {
+  id bigint [pk, increment]
+  cart_id bigint [not null, ref: > carts.id]
+  variant_id bigint [not null, ref: > product_variants.id]
+  quantity int [not null]
+  added_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (cart_id, variant_id) [unique]
+  }
+}
+
+Table customer_orders {
+  id bigint [pk, increment]
+  customer_id bigint [not null, ref: > customers.id]
+  pickup_point_id bigint [not null, ref: > pickup_points.id]
+  status order_status [not null, default: 'pending']
+  subtotal_amount numeric(12,2) [not null]
+  discount_amount numeric(12,2) [not null, default: 0]
+  total_amount numeric(12,2) [not null]
+  pickup_code varchar(20) [not null, unique]
+  placed_at timestamptz [not null, default: `now()`]
+  ready_for_pickup_at timestamptz
+  pickup_expires_at timestamptz
+  picked_up_at timestamptz
+}
+
+Table order_items {
+  id bigint [pk, increment]
+  order_id bigint [not null, ref: > customer_orders.id]
+  variant_id bigint [not null, ref: > product_variants.id]
+  beer_id bigint [ref: > beers.id]
+  batch_id bigint [ref: > inventory_batches.id]
+  quantity int [not null]
+  unit_price numeric(12,2) [not null]
+  line_discount numeric(12,2) [not null, default: 0]
+
+  indexes {
+    (order_id, variant_id) [unique]
+  }
+}
+
+Table payments {
+  id bigint [pk, increment]
+  order_id bigint [not null, ref: > customer_orders.id]
+  provider varchar(80) [not null]
+  provider_txn_id varchar(120) [unique]
+  amount numeric(12,2) [not null]
+  status payment_status [not null, default: 'pending']
+  paid_at timestamptz
+  created_at timestamptz [not null, default: `now()`]
+}
+
+Table employees {
+  id bigint [pk, increment]
+  email varchar(255) [not null, unique]
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  role employee_role [not null]
+  hired_at date [not null]
+  is_active boolean [not null, default: true]
+}
+
+Table order_status_history {
+  id bigint [pk, increment]
+  order_id bigint [not null, ref: > customer_orders.id]
+  changed_by_employee_id bigint [ref: > employees.id]
+  from_status order_status
+  to_status order_status [not null]
+  changed_at timestamptz [not null, default: `now()`]
+}
+
+Table reviews {
+  id bigint [pk, increment]
+  customer_id bigint [not null, ref: > customers.id]
+  beer_id bigint [not null, ref: > beers.id]
+  rating smallint [not null]
+  comment text
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (customer_id, beer_id) [unique]
+  }
+}
+
+Table product_views {
+  id bigint [pk, increment]
+  variant_id bigint [not null, ref: > product_variants.id]
+  customer_id bigint [ref: > customers.id]
+  viewed_at timestamptz [not null, default: `now()`]
+}
+
+Table order_audit_log {
+  id bigint [pk, increment]
+  order_id bigint [ref: > customer_orders.id]
+  action text
+  snapshot jsonb
+  logged_at timestamptz [not null, default: `now()`]
+}
+
+Table order_outbox_events {
+  id uuid [pk, default: `gen_random_uuid()`]
+  aggregate_type varchar(100) [not null]
+  aggregate_id varchar(100) [not null]
+  event_type varchar(100) [not null]
+  payload jsonb [not null]
+  created_at timestamptz [not null, default: `now()`]
+  published_at timestamptz
+}
+
+Table supply_outbox_events {
+  id uuid [pk, default: `gen_random_uuid()`]
+  aggregate_type varchar(100) [not null]
+  aggregate_id varchar(100) [not null]
+  event_type varchar(100) [not null]
+  payload jsonb [not null]
+  created_at timestamptz [not null, default: `now()`]
+  published_at timestamptz
+}
+
+Table review_eligible_customers {
+  customer_id bigint [not null, ref: > customers.id]
+  order_id bigint [not null, ref: > customer_orders.id]
+  created_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (customer_id, order_id) [pk]
+  }
+}

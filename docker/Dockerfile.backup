@@ -1,0 +1,20 @@
+FROM postgres:16-alpine
+
+RUN apk add --no-cache curl
+
+COPY --from=minio/mc:latest /usr/bin/mc /usr/local/bin/mc
+
+RUN chmod +x /usr/local/bin/mc
+RUN apk add --no-cache curl python3
+
+
+ARG SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/latest/download/supercronic-linux-amd64
+RUN curl -fsSL "$SUPERCRONIC_URL" -o /usr/local/bin/supercronic \
+    && chmod +x /usr/local/bin/supercronic
+
+COPY scripts/backup.sh /backup.sh
+COPY scripts/entrypoint-backup.sh /entrypoint-backup.sh
+RUN chmod +x /backup.sh /entrypoint-backup.sh
+COPY scripts/backup-exporter.py /backup-exporter.py
+
+ENTRYPOINT ["/entrypoint-backup.sh"]

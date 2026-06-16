@@ -1,0 +1,6 @@
+FROM metabase/metabase:v0.50.17
+RUN mkdir -p /plugins && \
+    JAR_URL=$(wget -qO- https://api.github.com/repos/ClickHouse/metabase-clickhouse-driver/releases/latest \
+      | grep '"browser_download_url"' | grep '\.jar' | head -1 | cut -d'"' -f4) && \
+    wget -q "$JAR_URL" -O /plugins/clickhouse.metabase-driver.jar && \
+    chmod 644 /plugins/clickhouse.metabase-driver.jar

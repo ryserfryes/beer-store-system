@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: api-gateway
+server:
+  port: ${SERVER_PORT:8080}
+services:
+  catalog: ${CATALOG_SERVICE_URL:http://localhost:8081}
+  warehouse: ${WAREHOUSE_SERVICE_URL:http://localhost:8082}
+  supply: ${SUPPLY_SERVICE_URL:http://localhost:8083}
+  order: ${ORDER_SERVICE_URL:http://localhost:8084}
+  review: ${REVIEW_SERVICE_URL:http://localhost:8085}

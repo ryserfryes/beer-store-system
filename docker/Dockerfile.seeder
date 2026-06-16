@@ -1,0 +1,10 @@
+FROM postgres:16-alpine
+
+RUN apk add --no-cache bash
+
+COPY seeds /seeds
+COPY scripts/seed.sh /scripts/seed.sh
+
+RUN chmod +x /scripts/seed.sh
+
+ENTRYPOINT ["/bin/bash", "/scripts/seed.sh"]

@@ -1,0 +1,22 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+  liquibase:
+    enabled: false
+  kafka:
+    bootstrap-servers: localhost:9092
+    listener:
+      auto-startup: false
+grpc:
+  server:
+    port: -1
+  client:
+    catalog-service:
+      address: static://localhost:19991
+      negotiation-type: plaintext
+    warehouse-service:
+      address: static://localhost:19992
+      negotiation-type: plaintext

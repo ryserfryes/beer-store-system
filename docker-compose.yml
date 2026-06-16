@@ -1,0 +1,657 @@
+services:
+  etcd1:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: etcd1
+    hostname: etcd1
+    environment:
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_NAME: etcd1
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd1:2379
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd1:2380
+      ETCD_INITIAL_CLUSTER: etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: etcd-cluster
+    ports:
+      - "2379:2379"
+    healthcheck:
+      test: ["CMD", "etcdctl", "--endpoints=http://localhost:2379", "endpoint", "health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  etcd2:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: etcd2
+    hostname: etcd2
+    environment:
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_NAME: etcd2
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd2:2379
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd2:2380
+      ETCD_INITIAL_CLUSTER: etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: etcd-cluster
+    healthcheck:
+      test: ["CMD", "etcdctl", "--endpoints=http://localhost:2379", "endpoint", "health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  etcd3:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: etcd3
+    hostname: etcd3
+    environment:
+      ALLOW_NONE_AUTHENTICATION: "yes"
+      ETCD_NAME: etcd3
+      ETCD_DATA_DIR: /etcd-data
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd3:2379
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd3:2380
+      ETCD_INITIAL_CLUSTER: etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: etcd-cluster
+    healthcheck:
+      test: ["CMD", "etcdctl", "--endpoints=http://localhost:2379", "endpoint", "health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pg-node1:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.patroni
+    container_name: pg-node1
+    hostname: pg-node1
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PG_EXPORTER_USER: ${PG_EXPORTER_USER}
+      PG_EXPORTER_PASSWORD: ${PG_EXPORTER_PASSWORD}
+      PATRONI_NAME: pg-node1
+    volumes:
+      - ./data/pg-node1:/var/lib/postgresql/data
+      - ./patroni/patroni1.yml:/etc/patroni.yml
+      - ./scripts/patroni-post-init.sh:/scripts/patroni-post-init.sh
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      etcd2:
+        condition: service_healthy
+      etcd3:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8008/health" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  pg-node2:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.patroni
+    container_name: pg-node2
+    hostname: pg-node2
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PG_EXPORTER_USER: ${PG_EXPORTER_USER}
+      PG_EXPORTER_PASSWORD: ${PG_EXPORTER_PASSWORD}
+      PATRONI_NAME: pg-node2
+    volumes:
+      - ./data/pg-node2:/var/lib/postgresql/data
+      - ./patroni/patroni2.yml:/etc/patroni.yml
+      - ./scripts/patroni-post-init.sh:/scripts/patroni-post-init.sh
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      etcd2:
+        condition: service_healthy
+      etcd3:
+        condition: service_healthy
+
+  pg-node3:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.patroni
+    container_name: pg-node3
+    hostname: pg-node3
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PG_EXPORTER_USER: ${PG_EXPORTER_USER}
+      PG_EXPORTER_PASSWORD: ${PG_EXPORTER_PASSWORD}
+      PATRONI_NAME: pg-node3
+    volumes:
+      - ./data/pg-node3:/var/lib/postgresql/data
+      - ./patroni/patroni3.yml:/etc/patroni.yml
+      - ./scripts/patroni-post-init.sh:/scripts/patroni-post-init.sh
+    depends_on:
+      etcd1:
+        condition: service_healthy
+      etcd2:
+        condition: service_healthy
+      etcd3:
+        condition: service_healthy
+
+  haproxy:
+    image: haproxy:2.9-alpine
+    container_name: haproxy
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg
+    ports:
+      - "5000:5000"
+      - "7000:7000"
+    depends_on:
+      pg-node1:
+        condition: service_healthy
+
+  migrator:
+    container_name: migrator
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.migrator
+    depends_on:
+      haproxy:
+        condition: service_started
+    environment:
+      POSTGRES_HOST: haproxy
+      POSTGRES_PORT: 5000
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TEST_POSTGRES_DB: ${TEST_POSTGRES_DB}
+      MIGRATION_VERSION: ${MIGRATION_VERSION}
+      RUN_MIGRATION_TESTS: ${RUN_MIGRATION_TESTS:-true}
+    restart: "no"
+
+  seeder:
+    container_name: seeder
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.seeder
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_HOST: haproxy
+      POSTGRES_PORT: 5000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@haproxy:5000/${POSTGRES_DB}?sslmode=disable
+      APP_ENV: ${APP_ENV}
+      SEED_COUNT: ${SEED_COUNT}
+      MIGRATION_VERSION: ${MIGRATION_VERSION}
+    restart: "no"
+
+  api-gateway:
+    container_name: api-gateway
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      CATALOG_SERVICE_URL: http://catalog-service:8081
+      WAREHOUSE_SERVICE_URL: http://warehouse-service:8082
+      SUPPLY_SERVICE_URL: http://supply-service:8083
+      ORDER_SERVICE_URL: http://order-service:8084
+      REVIEW_SERVICE_URL: http://review-service:8085
+    restart: unless-stopped
+
+  catalog-service:
+    container_name: catalog-service
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: catalog-service
+    ports:
+      - "8081:8081"
+      - "9091:9091"
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_HOST: haproxy
+      POSTGRES_PORT: 5000
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      GRPC_PORT: 9091
+    restart: unless-stopped
+
+  warehouse-service:
+    container_name: warehouse-service
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: warehouse-service
+    ports:
+      - "8082:8082"
+      - "9095:9095"
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_HOST: haproxy
+      POSTGRES_PORT: 5000
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      GRPC_PORT: 9095
+    restart: unless-stopped
+
+  supply-service:
+    container_name: supply-service
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: supply-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_HOST: haproxy
+      POSTGRES_PORT: 5000
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    restart: unless-stopped
+
+  order-service:
+    container_name: order-service
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: order-service
+    ports:
+      - "8084:8084"
+      - "9094:9094"
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_HOST: haproxy
+      POSTGRES_PORT: 5000
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      CATALOG_GRPC_HOST: catalog-service
+      CATALOG_GRPC_PORT: 9091
+      WAREHOUSE_GRPC_HOST: warehouse-service
+      WAREHOUSE_GRPC_PORT: 9095
+      GRPC_PORT: 9094
+    restart: unless-stopped
+
+  review-service:
+    container_name: review-service
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: review-service
+    ports:
+      - "8085:8085"
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_HOST: haproxy
+      POSTGRES_PORT: 5000
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      ORDER_GRPC_HOST: order-service
+      ORDER_GRPC_PORT: 9094
+    restart: unless-stopped
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:master
+    container_name: postgres-exporter
+    restart: unless-stopped
+    depends_on:
+      haproxy:
+        condition: service_started
+    environment:
+      POSTGRES_HOST: haproxy
+      POSTGRES_PORT: 5000
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@haproxy:5000/${POSTGRES_DB}?sslmode=disable
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "9187:9187"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9187/metrics"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+  prometheus:
+    image: prom/prometheus:main-distroless
+    container_name: prometheus
+    restart: unless-stopped
+    depends_on:
+      postgres-exporter:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/prometheus/prometheus.yml
+      - ./data/prometheus:/prometheus
+    command:
+      - '--config.file=/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    depends_on:
+      prometheus:
+        condition: service_started
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+      - ./grafana/prometheus.yml:/etc/grafana/provisioning/datasources/prometheus.yml
+      - ./grafana/postgres-datasource.yml:/etc/grafana/provisioning/datasources/postgres-datasource.yml
+      - ./grafana/postgresql.yml:/etc/grafana/provisioning/dashboards/postgresql.yml
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    restart: "no"
+
+  minio:
+    image: minio/minio
+    container_name: MinIO
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_PROMETHEUS_AUTH_TYPE: public
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./data/MinIO:/MinIO
+    command: [ "server", "--console-address", ":9001", "/MinIO" ]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc
+    container_name: minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./scripts/minio-init.sh:/minio-init.sh
+    entrypoint: ["/bin/sh", "/minio-init.sh"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_BACKUP_USER: ${MINIO_BACKUP_USER}
+      MINIO_BACKUP_PASSWORD: ${MINIO_BACKUP_PASSWORD}
+      BUCKET_BACKUP_NAME: ${BUCKET_BACKUP_NAME}
+      BACKUP_RETENTION_COUNT: ${BACKUP_RETENTION_COUNT}
+      BACKUP_INTERVAL: ${BACKUP_INTERVAL}
+
+    restart: "no"
+
+  backup:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backup
+    container_name: backup
+    depends_on:
+      haproxy:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./scripts/backup.sh:/backup.sh
+    environment:
+      POSTGRES_HOST: haproxy
+      POSTGRES_PORT: 5000
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      MINIO_BACKUP_USER: ${MINIO_BACKUP_USER}
+      MINIO_BACKUP_PASSWORD: ${MINIO_BACKUP_PASSWORD}
+      BUCKET_BACKUP_NAME: ${BUCKET_BACKUP_NAME}
+      BACKUP_RETENTION_COUNT: ${BACKUP_RETENTION_COUNT}
+      BACKUP_INTERVAL: ${BACKUP_INTERVAL}
+    restart: unless-stopped
+
+  kafka-connect:
+    image: quay.io/debezium/connect:2.7.0.Final
+    container_name: kafka-connect
+    ports:
+      - "8079:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: connect-cluster
+      CONFIG_STORAGE_TOPIC: connect-configs
+      OFFSET_STORAGE_TOPIC: connect-offsets
+      STATUS_STORAGE_TOPIC: connect-status
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_TOPIC_CREATION_ENABLE: "true"
+      CONNECT_TOPIC_CREATION_DEFAULT_REPLICATION_FACTOR: "1"
+      CONNECT_TOPIC_CREATION_DEFAULT_PARTITIONS: "1"
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      haproxy:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8083/connectors || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    restart: unless-stopped
+
+  debezium-setup:
+    image: curlimages/curl:latest
+    container_name: debezium-setup
+    volumes:
+      - ./debezium:/debezium
+    entrypoint: ["/bin/sh", "/debezium/register.sh"]
+    depends_on:
+      kafka-connect:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    restart: "no"
+
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    ports:
+      - "9092:9092"
+    volumes:
+      - ./data/kafka:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/9092' 2>/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 200s
+    restart: unless-stopped
+
+  kafka-init:
+    image: apache/kafka:3.8.0
+    container_name: kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: >
+      bash -c "
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic orders.placed --partitions 3 --replication-factor 1 &&
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic orders.picked-up --partitions 3 --replication-factor 1 &&
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic supply.received --partitions 3 --replication-factor 1 &&
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic connect-configs --partitions 1 --replication-factor 1 --config cleanup.policy=compact &&
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic connect-offsets --partitions 25 --replication-factor 1 --config cleanup.policy=compact &&
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic connect-status --partitions 5 --replication-factor 1 --config cleanup.policy=compact &&
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic cdc.public.customer_orders --partitions 1 --replication-factor 1
+      "
+    restart: "no"
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8088:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: debezium
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083
+    depends_on:
+      - kafka
+    restart: unless-stopped
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3-alpine
+    container_name: clickhouse
+    ports:
+      - "8123:8123"
+      - "19000:9000"
+    volumes:
+      - ./clickhouse/config.xml:/etc/clickhouse-server/config.d/custom.xml
+      - ./clickhouse/users.xml:/etc/clickhouse-server/users.d/custom-profiles.xml
+      - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - clickhouse-data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8123/ping || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  metabase-db:
+    image: postgres:16-alpine
+    container_name: metabase-db
+    environment:
+      POSTGRES_DB: ${MB_DB_NAME}
+      POSTGRES_USER: ${MB_DB_USER}
+      POSTGRES_PASSWORD: ${MB_DB_PASSWORD}
+    volumes:
+      - ./data/metabase-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${MB_DB_USER} -d ${MB_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  metabase:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.metabase
+    container_name: metabase
+    ports:
+      - "3001:3000"
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: ${MB_DB_NAME}
+      MB_DB_PORT: 5432
+      MB_DB_USER: ${MB_DB_USER}
+      MB_DB_PASS: ${MB_DB_PASSWORD}
+      MB_DB_HOST: metabase-db
+      MB_PLUGINS_DIR: /plugins
+    depends_on:
+      metabase-db:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+
+  metabase-setup:
+    image: curlimages/curl:latest
+    container_name: metabase-setup
+    volumes:
+      - ./metabase:/metabase
+    entrypoint: ["/bin/sh", "/metabase/setup.sh"]
+    environment:
+      MB_URL: http://metabase:3000
+      MB_ADMIN_EMAIL: ${MB_ADMIN_EMAIL}
+      MB_ADMIN_PASSWORD: ${MB_ADMIN_PASSWORD}
+      CH_HOST: clickhouse
+      CH_PORT: "8123"
+      CH_DB: analytics
+      CH_USER: metabase
+      CH_PASSWORD: metabase_clickhouse_password
+    depends_on:
+      metabase:
+        condition: service_started
+    restart: "no"
+
+volumes:
+  clickhouse-data:
